@@ -1,0 +1,8 @@
+name: 'Form Field Class'
+type: module
+description: 'Allows custom HTML classes for form fields.'
+package: Fields
+core: 8.x
+
+dependencies:
+  - drupal:field

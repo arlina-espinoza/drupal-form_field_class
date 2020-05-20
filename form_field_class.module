@@ -1,0 +1,103 @@
+<?php
+
+/**
+ * @file
+ * Module file for form_field_class.
+ */
+
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Field\WidgetBaseInterface;
+use Drupal\Core\Field\WidgetInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
+
+/**
+ * Implements hook_field_widget_info_alter().
+ */
+function form_field_class_field_widget_info_alter(array &$info) {
+  foreach ($info as $widget => $default) {
+    $info[$widget]['settings']['wrapper_classes'] = '';
+  }
+}
+
+/**
+ * Implements hook_field_widget_third_party_settings_form().
+ */
+function form_field_class_field_widget_third_party_settings_form(
+  WidgetInterface $plugin,
+  FieldDefinitionInterface $field_definition,
+  $form_mode,
+  array $form,
+  FormStateInterface $form_state
+) {
+  $element['wrapper_classes'] = [
+    '#type' => 'textfield',
+    '#title' => t('Wrapper classes'),
+    '#default_value' => $plugin->getThirdPartySetting('form_field_class', 'wrapper_classes'),
+  ];
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_widget_settings_summary_alter().
+ */
+function form_field_class_field_widget_settings_summary_alter(array &$summary, array $context) {
+  $wrapper_classes = $context['widget']->getThirdPartySetting('form_field_class', 'wrapper_classes');
+  if (!empty($wrapper_classes)) {
+    $summary[] = t('Wrapper classes: @wrapper_classes', ['@wrapper_classes' => $wrapper_classes]);
+  }
+
+  return $summary;
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function form_field_class_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $base_forms = [
+    'node_form',
+  ];
+  $build_info = $form_state->getBuildInfo();
+  if (!empty($build_info['base_form_id']) && in_array($build_info['base_form_id'], $base_forms)) {
+    _form_field_class_form_alter($form, $form_state, $form_id);
+  }
+}
+
+/**
+ * Helper method.
+ *
+ * @param $form
+ *   The form.
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ *   The form state.
+ * @param string $form_id
+ *   Form id.
+ */
+function _form_field_class_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  foreach (Element::children($form) as $delta => $element) {
+
+    // Special handling of "subform" for paragraphs.
+    if ($element == 'subform') {
+      _form_field_class_form_alter($form[$element], $form_state, $form_id);
+    }
+
+    elseif (substr($element, 0, 6) != 'field_' || empty($form[$element]['widget']['#wrapper_classes'])) {
+      continue;
+    }
+    $form[$element]['#attributes']['class'][] = $form[$element]['widget']['#wrapper_classes'];
+  }
+}
+
+/**
+ * Implements hook_field_widget_multivalue_form_alter().
+ */
+function form_field_class_field_widget_multivalue_form_alter(array &$elements, FormStateInterface $form_state, array $context) {
+  /* @var \Drupal\Core\Field\WidgetBaseInterface $widget */
+  $widget = $context['widget'];
+  if ($widget instanceof WidgetBaseInterface
+    && ($classes = $widget->getThirdPartySetting('form_field_class', 'wrapper_classes'))
+  ) {
+    $elements['#wrapper_classes'] = $classes;
+  }
+}
